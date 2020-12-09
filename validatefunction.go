@@ -58,32 +58,28 @@ func CheckTypeCompatibility(want, got reflect.Type) error {
 }
 
 // ValidateFunction checks whether `f` is a function, and whether
-// the passed parameters have the correct number and types.
-func ValidateFunction(f interface{}, args ...interface{}) error {
+// the input parameters and the return arguments have the correct number and types.
+func ValidateFunction(f interface{}, returnArgs []reflect.Type, inputParams ...interface{}) error {
 	typ := reflect.TypeOf(f)
-	errorType := reflect.TypeOf((*error)(nil)).Elem()
 	if kind := typ.Kind(); kind != reflect.Func {
 		return fmt.Errorf("invalid object, want %v, got %v", reflect.Func, kind)
 	}
-	// FIXME allow specifying a return type, instead of statically checking that
-	//       the function returns `error`.
-	switch {
-	case typ.NumOut() == 1:
-		// return type must be error
-		if typ.Out(0) != errorType {
-			return fmt.Errorf("invalid return type, want %v, got %v", errorType, typ.Out(0))
+	if typ.NumOut() != len(returnArgs) {
+		return fmt.Errorf("wrong number of return arguments, want %d, got %d", typ.NumOut(), len(returnArgs))
+	}
+	for idx := 0; idx < len(returnArgs); idx++ {
+		if typ.Out(idx) != returnArgs[idx] {
+			return fmt.Errorf("invalid return argument at index %d: want %v, got %v", idx, typ.Out(idx), returnArgs[idx])
 		}
-	default:
-		return fmt.Errorf("invalid number of returned parameters, want 1, got %d", typ.NumOut())
 	}
 	// check input parameter types
 	if typ.IsVariadic() {
 		// check non-variadic arguments
-		if len(args) < typ.NumIn()-1 {
-			return fmt.Errorf("wrong number of parameters for variadic function, want at least %d, got %d", typ.NumIn()-1, len(args))
+		if len(inputParams) < typ.NumIn()-1 {
+			return fmt.Errorf("wrong number of parameters for variadic function, want at least %d, got %d", typ.NumIn()-1, len(inputParams))
 		}
 		for idx := 0; idx < typ.NumIn()-1; idx++ {
-			want, got := typ.In(idx), reflect.TypeOf(args[idx])
+			want, got := typ.In(idx), reflect.TypeOf(inputParams[idx])
 			if err := CheckTypeCompatibility(want, got); err != nil {
 				return fmt.Errorf("incompatible type at index %d: %v", idx, err)
 			}
@@ -98,19 +94,19 @@ func ValidateFunction(f interface{}, args ...interface{}) error {
 		// Then check that all the passed variadic arguments have compatible types with
 		// the function's signture.
 		want := vargs.Elem()
-		for idx := typ.NumIn() - 1; idx < len(args); idx++ {
-			got := reflect.TypeOf(args[idx])
+		for idx := typ.NumIn() - 1; idx < len(inputParams); idx++ {
+			got := reflect.TypeOf(inputParams[idx])
 			if err := CheckTypeCompatibility(want, got); err != nil {
 				return fmt.Errorf("incompatible type at index %d: %v", idx, err)
 			}
 		}
 	} else {
 		// checking a non-variadic function
-		if typ.NumIn() != len(args) {
-			return fmt.Errorf("wrong number of parameters, want %d, got %d", typ.NumIn(), len(args))
+		if typ.NumIn() != len(inputParams) {
+			return fmt.Errorf("wrong number of parameters, want %d, got %d", typ.NumIn(), len(inputParams))
 		}
 		for idx := 0; idx < typ.NumIn(); idx++ {
-			want, got := typ.In(idx), reflect.TypeOf(args[idx])
+			want, got := typ.In(idx), reflect.TypeOf(inputParams[idx])
 			if err := CheckTypeCompatibility(want, got); err != nil {
 				return fmt.Errorf("incompatible type at index %d: %v", idx, err)
 			}
