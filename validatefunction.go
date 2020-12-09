@@ -5,10 +5,6 @@ import (
 	"reflect"
 )
 
-var (
-	ErrorType = reflect.TypeOf((*error)(nil)).Elem()
-)
-
 // CheckTypeCompatibility checks whether `got` is a valid type for `want`, and
 // returns a descriptive error otherwise.
 //
@@ -20,7 +16,6 @@ var (
 //   want=error, got=error-typed nil
 //   want=io.ReadWriter, got=io.Writer
 //   want=[]string, got=[]string
-//   want=[]interface{}, got=[]string
 //   want=struct{}, got=struct{}
 //
 // Examples of negative compatibility:
@@ -30,13 +25,20 @@ var (
 //   want=*string, got=string
 //   want=*string, got=*int
 //   want=struct{}, got=*struct{}
+//   want=[]interface{}, got=[]string
 func CheckTypeCompatibility(want, got reflect.Type) error {
 	if want == nil {
 		return fmt.Errorf("`want` cannot be nil")
 	}
 	if got == nil {
-		// this happens when an untyped nil is passed
-		return fmt.Errorf("not implemented yet")
+		// this happens when an untyped nil is passed.
+		// Check if `want` is a nil-able type.
+		switch want.Kind() {
+		case reflect.Func, reflect.Chan, reflect.Slice, reflect.Map, reflect.Interface, reflect.Ptr:
+			return nil
+		default:
+			return fmt.Errorf("incompatible types: got untyped `nil` but %v is not nil-able", want)
+		}
 	}
 
 	switch want.Kind() {
