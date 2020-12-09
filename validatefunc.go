@@ -57,9 +57,9 @@ func CheckTypeCompatibility(want, got reflect.Type) error {
 	return nil
 }
 
-// ValidateFunction checks whether `f` is a function, and whether
+// ValidateFunc checks whether `f` is a function, and whether
 // the input parameters and the return arguments have the correct number and types.
-func ValidateFunction(f interface{}, returnArgs []reflect.Type, inputParams ...interface{}) error {
+func ValidateFunc(f interface{}, returnArgs []reflect.Type, inputParams ...interface{}) error {
 	typ := reflect.TypeOf(f)
 	if kind := typ.Kind(); kind != reflect.Func {
 		return fmt.Errorf("invalid object, want %v, got %v", reflect.Func, kind)
